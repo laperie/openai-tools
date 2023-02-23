@@ -2,8 +2,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text.Json;
+
+using Loupedeck;
+
+using Newtonsoft.Json;
 
 namespace AI.Dev.OpenAI.GPT.Settings
 {
@@ -16,9 +20,11 @@ namespace AI.Dev.OpenAI.GPT.Settings
         private static readonly Lazy<Dictionary<Tuple<string, string>, int>> BPE_RANKS = new Lazy<Dictionary<Tuple<string, string>, int>>(BuildBpeRanks);
         private static readonly string? NAMESPACE = typeof(GPT3Settings).Namespace;
 
+        private static String ResourcePrefix = "Loupedeck.GPTPlugin.openai_tools.GPT_tokenizer_dotnet.Lib.Settings.";
+
         private static Dictionary<Tuple<string, string>, int> BuildBpeRanks()
         {
-            string[] lines = EmbeddedResource.Read("vocab.bpe").Split("\n");
+            string[] lines = EmbeddedResources.ReadTextFile($"{ResourcePrefix}vocab.bpe").Split('\n');
             List<Tuple<string, string>> bpeMerges = new ArraySegment<string>(lines, 1, lines.Length - 1)
                 .Where(x => x.Trim().Length > 0)
                 .Select(x =>
@@ -31,12 +37,14 @@ namespace AI.Dev.OpenAI.GPT.Settings
 
         private static Dictionary<string, int> BuildEncoder()
         {
-            string json = EmbeddedResource.Read("encoder.json");
-            var encoder = JsonSerializer.Deserialize<Dictionary<string, int>>(json, new JsonSerializerOptions());
-            if (encoder == null) throw new NullReferenceException($"[{NAMESPACE}] encoder.json deserialization returned NULL");
+            if (!JsonHelpers.TryDeserializeAnyObject<Dictionary<string, int>>(EmbeddedResources.ReadTextFile($"{ResourcePrefix}encoder.json"), out var encoder))
+            {
+                throw new NullReferenceException($"[{NAMESPACE}] encoder.json deserialization returned NULL");
+            }
+
             return encoder;
         }
-
+        
         private static Dictionary<Tuple<string, string>, int> DictZip(List<Tuple<string, string>> x, List<int> y)
         {
             var result = new Dictionary<Tuple<string, string>, int>();
